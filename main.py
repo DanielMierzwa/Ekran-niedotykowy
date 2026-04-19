@@ -32,15 +32,16 @@ cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
 cv2.resizeWindow(WINDOW_NAME, 800, 600)
 
 
-
-
 def is_finger_up(lm, tip, pip):
     return lm[tip].y < lm[pip].y
+
 
 keyboard_triggered = False
 click_triggered = False
 right_click_triggered = False
 drawing_active = False
+enter_triggered = False
+
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -60,62 +61,86 @@ while cap.isOpened():
     prawa_info = "Prawa: Brak"
 
     if result.hand_landmarks:
-        for idx, hand in enumerate(result.hand_landmarks):
+        for hand in result.hand_landmarks:
             lm = hand
 
-            # --- ręka (label nie zawsze dostępny w Tasks API) ---
-            # zakładamy: pierwsza = lewa/prawa zależnie od kamery
+            # --- ROZDZIELENIE RĄK NA PODSTAWIE POZYCJI ---
+            cx = int(lm[0].x * w)
 
-            # PALCE
-            f_ind = is_finger_up(lm, 8, 6)
-            f_mid = is_finger_up(lm, 12, 10)
-            f_ring = is_finger_up(lm, 16, 14)
-            f_pinky = is_finger_up(lm, 20, 18)
+            if cx < w // 2:
+                hand_type = "left"
+            else:
+                hand_type = "right"
 
-            # --- PRAWA (punkt z palca wskazującego) ---
-            px, py = int(lm[8].x * w), int(lm[8].y * h)
-            cv2.circle(frame, (px, py), 12, KOLOR_KROPKI_PRAWA, -1)
-            prawa_info = f"Punkt: X={px} Y={py}"
+            # =========================
+            # ✋ LEWA RĘKA = GESTY
+            # =========================
+            if hand_type == "left":
+                f_ind = is_finger_up(lm, 8, 6)#Wskazujący
+                f_mid = is_finger_up(lm, 12, 10)#Środkowy
+                f_ring = is_finger_up(lm, 16, 14)#Serdeczny
+                f_pinky = is_finger_up(lm, 20, 18)#Mały
 
-            # --- GESTY ---
-            if not f_ind and not f_mid and not f_ring and not f_pinky:
-                action_text = " (Klik)"
-                action_color = KOLOR_KLIK
+                if not f_ind and not f_mid and not f_ring and not f_pinky:
+                    action_text = " (Klik)"
+                    action_color = KOLOR_KLIK
 
-                if not click_triggered:
-                    pyautogui.click()
-                    click_triggered = True
+                    if not click_triggered:
+                        pyautogui.click()
+                        click_triggered = True
 
-            elif f_pinky and not f_ind and not f_mid and not f_ring:
-                action_text = " (Klawiatura)"
-                action_color = KOLOR_KLAWIATURA
-                if not keyboard_triggered:
-                    os.startfile("osk.exe")
-                    keyboard_triggered = True
+                elif f_pinky and not f_ind and not f_mid and not f_ring:
+                    action_text = " (Klawiatura)"
+                    action_color = KOLOR_KLAWIATURA
 
-            elif f_ind and f_pinky and not f_mid and not f_ring:
-                action_text = " (Rysowanie)"
-                action_color = KOLOR_RYSOWANIE
+                    if not keyboard_triggered:
+                        os.startfile("osk.exe")
+                        keyboard_triggered = True
 
-                if not drawing_active:
-                    pyautogui.mouseDown()
-                    drawing_active = True
+                elif f_ind and f_pinky and not f_mid and not f_ring:
+                    action_text = " (Rysowanie)"
+                    action_color = KOLOR_RYSOWANIE
 
-            elif f_ind and f_mid and not f_ring and not f_pinky:
-                action_text = " (Prawy Klik)"
-                action_color = KOLOR_PRAWY_KLIK
-                if not right_click_triggered:
-                    pyautogui.click(button="right")
-                    right_click_triggered = True
+                    if not drawing_active:
+                        pyautogui.mouseDown()
+                        drawing_active = True
 
-            elif f_ind and f_mid and f_ring and f_pinky:
-                keyboard_triggered = False
-                click_triggered = False
-                right_click_triggered = False
-                if drawing_active:
-                    pyautogui.mouseUp()
-                    drawing_active = False
+                elif f_ind and f_mid and not f_ring and not f_pinky:
+                    action_text = " (Prawy Klik)"
+                    action_color = KOLOR_PRAWY_KLIK
 
+                    if not right_click_triggered:
+                        pyautogui.click(button="right")
+                        right_click_triggered = True
+
+                elif f_ind and not f_mid  and  f_ring and  f_pinky:
+                    action_text = " (Enter)"
+                    action_color = KOLOR_KLIK
+
+                    if not enter_triggered:
+                        pyautogui.scroll(10)
+                        enter_triggered = True
+
+                elif f_ind and f_mid and f_ring and f_pinky:
+                    keyboard_triggered = False
+                    click_triggered = False
+                    right_click_triggered = False
+                    enter_triggered = False
+
+                    if drawing_active:
+                        pyautogui.mouseUp()
+                        drawing_active = False
+                
+
+            # =========================
+            # 👉 PRAWA RĘKA = ŚLEDZENIE
+            # =========================
+            elif hand_type == "right":
+                px = int(lm[8].x * w)
+                py = int(lm[8].y * h)
+
+                cv2.circle(frame, (px, py), 12, KOLOR_KROPKI_PRAWA, -1)
+                prawa_info = f"Prawa: X={px} Y={py}"
 
     # --- UI ---
     cv2.rectangle(frame, (0, 0), (w, 60), (30, 30, 30), -1)
