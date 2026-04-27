@@ -3,7 +3,7 @@ import numpy as np
 import os
 import mediapipe as mp
 import pyautogui
-
+import gesture_enum
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
@@ -81,23 +81,29 @@ while cap.isOpened():
                 f_ring = is_finger_up(lm, 16, 14)#Serdeczny
                 f_pinky = is_finger_up(lm, 20, 18)#Mały
 
-                if not f_ind and not f_mid and not f_ring and not f_pinky:
+                gesture = Gesture.Fist
+                if gesture==Gesture.Fist:
                     action_text = " (Klik)"
                     action_color = KOLOR_KLIK
 
                     if not click_triggered:
                         pyautogui.click()
                         click_triggered = True
+                if gesture==Gesture.Victoria:
+                    action_text = " (Prawy Klik)"
+                    action_color = KOLOR_PRAWY_KLIK
 
-                elif f_pinky and not f_ind and not f_mid and not f_ring:
+                    if not right_click_triggered:
+                        pyautogui.click(button="right")
+                        right_click_triggered = True
+                if gesture==Gesture.Essa:
                     action_text = " (Klawiatura)"
                     action_color = KOLOR_KLAWIATURA
-
+    
                     if not keyboard_triggered:
                         os.startfile("osk.exe")
                         keyboard_triggered = True
-
-                elif f_ind and f_pinky and not f_mid and not f_ring:
+                elif gesture == Gesture.Drawing:
                     action_text = " (Rysowanie)"
                     action_color = KOLOR_RYSOWANIE
 
@@ -105,23 +111,8 @@ while cap.isOpened():
                         pyautogui.mouseDown()
                         drawing_active = True
 
-                elif f_ind and f_mid and not f_ring and not f_pinky:
-                    action_text = " (Prawy Klik)"
-                    action_color = KOLOR_PRAWY_KLIK
 
-                    if not right_click_triggered:
-                        pyautogui.click(button="right")
-                        right_click_triggered = True
-
-                elif f_ind and not f_mid  and  f_ring and  f_pinky:
-                    action_text = " (Enter)"
-                    action_color = KOLOR_KLIK
-
-                    if not enter_triggered:
-                        pyautogui.scroll(10)
-                        enter_triggered = True
-
-                elif f_ind and f_mid and f_ring and f_pinky:
+                elif gesture==Gesture.Open:
                     keyboard_triggered = False
                     click_triggered = False
                     right_click_triggered = False
